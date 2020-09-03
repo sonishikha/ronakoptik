@@ -4,11 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Customer;
-use App\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
+use App\Models\ApiValidation;
+
+use App\Customer;
 use Exception;
 
 class CustomerController extends Controller
@@ -21,29 +20,27 @@ class CustomerController extends Controller
     public function index(Request $request)
     {
         try{
-            $validator = $this->validateRequest($request);
-            if($validator->fails()){
-                throw New Exception($validator->messages());
-            }
-           
-            $user = User::where('email', '=', $request->userName)->firstOr(function () {
-                throw new Exception('Username Not Found');
-            });
-            $region = User::find($user->id)->region;
+            // Validate request parameters and user
+            $api_validation = new ApiValidation;
+            $user = $api_validation->validateAndGetUser($request);
+            
+            //Get user region
+            $region = $api_validation->getUserRegion($user->id);
             if(!$region){
                 throw new Exception('User Region Not Found.');
             }
-            $region_code = $region->region_code;
-            
-            $customers = Customer::where('Region__c', $region_code)
+
+            //Get customer details
+            $customers = Customer::where('Region__c', $region->region_code)
                                 ->where('address_Type__c', 'B')
                                 ->paginate(10, ['*'], 'page', $request->offSet);
             
-            if($customers->total() == 0){
+            if($customers->count() == 0){
                 throw new Exception('Customer Not Found.');
             }
 
             $customers->map(function($customer){
+                //Get customer shipping addresses
                 $customer->ship_to_party = (object)['records'=>[]];
                 $shipping_customers = Customer::select('Address_Street__c','Address_Block__c','Address_Building__c','Address_StreetNo__c','Address_City__c','Address_ZipCode__c','Address_State__c','Address_Country_cc','GSTIN__c','GSTIN_TYPE__c')
                             ->where('BP_Code__c', $customer->BP_Code__c)
@@ -54,6 +51,7 @@ class CustomerController extends Controller
                     }
                 }
 
+                //Get customer PDC
                 $customer->pdc = (object)['records'=>[]];
                 $pdc_customers = DB::table('Vw_PDC_OnHold_Data')->where('Customer_Code__c', $customer->BP_Code__c)->get();
                 if($pdc_customers){
@@ -62,11 +60,11 @@ class CustomerController extends Controller
                     }
                 }
 
+                //Get Customer Ageing
                 $customer_ageing = DB::table('VW_CustomerAgeing')
                                     ->select('0 - 30', '31 - 60', '61 - 90', '91 - 120', '121 - 150', '151 - 180', '181 - 240', '241 - 300', '301 - 360', '361 +')
                                     ->where('Customer Code', $customer->BP_Code__c)->get();
                 $customer['ageing'] = $customer_ageing;
-                
                 
                 return $customer;
             });
@@ -121,15 +119,5 @@ class CustomerController extends Controller
     {
         //
     }
-    
-    public function validateRequest($request){
-        $validator = Validator::make($request->all(), 
-                    array(
-                        "userName" => "required|email",
-                        "offSet" => "required|int",
-                        "sync" => ["required", Rule::in(['no','yes',"No","Yes","NO","YES"]),],
-                    )
-        );
-        return $validator;
-    }
+
 }

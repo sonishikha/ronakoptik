@@ -54,4 +54,12 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasOne('App\Models\UserRegion', 'user_id');
     }
 
+    public function warehouse(){
+        return $this->hasMany('App\Models\UserWarehouseMap', 'user_id');
+    }
+
+    public function brand(){
+        return $this->hasMany('App\Models\UserBrandMap', 'user_id');
+    }
+
 }

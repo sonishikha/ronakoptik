@@ -25,7 +25,6 @@ Route::get('mysqluser', 'JwtAuthController@getuser');
 Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('user', 'JwtAuthController@getAuthenticatedUser');
     Route::post('customers', 'CustomerController@index');
+    Route::post('products', 'ProductController@index');
+    Route::post('stocks', 'StockController@index');
 });
-
-Route::get('customers\{id}', 'CustomerController@show');
-//Route::resource('customers', 'API\CustomerController');
