@@ -23,8 +23,15 @@ class JwtAuthController extends Controller
         } catch (JWTException $e) {
             return response()->json(['error' => 'Could Not Create Token'], 500);
         }
-
-        return response()->json(compact('token'));
+        
+        //return response()->json(compact('token'));
+        return response()->json([
+                 'email' => $request->email,
+                 'instance_url' => url('/'),
+                 'token_type' => 'Bearer',
+                 'access_token' => $token,
+                 'issued_at' => date('Y-m-d H:i:s')
+             ]);
     }
 
     public function register(Request $request)
