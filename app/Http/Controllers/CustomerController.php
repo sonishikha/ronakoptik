@@ -29,49 +29,57 @@ class CustomerController extends Controller
             if(!$region){
                 throw new Exception('User Region Not Found.');
             }
-
+           
             //Get customer details
             $customers = Customer::where('Region__c', $region->region_code)
                                 ->where('address_Type__c', 'B')
-                                ->paginate(10, ['*'], 'page', $request->offSet);
-            
-            if($customers->count() == 0){
+                                ->paginate(200, ['*'], 'page', $request->offSet)->toArray();
+            if(empty($customers['data'])){
                 throw new Exception('Customer Not Found.');
             }
+            $customer_ids = array_column($customers['data'],'BP_Code__c');
+            
+            //Customer Ageing Query
+            $customer_ageing = DB::table('VW_CustomerAgeing') 
+                                ->whereIn('Customer Code', $customer_ids)
+                                ->get()->toArray();
+            //Customer Shipping Address Query
+            $shipping_customers = Customer::select('BP_Code__c','Address_Street__c','Address_Block__c','Address_Building__c','Address_StreetNo__c','Address_City__c','Address_ZipCode__c','Address_State__c','Address_Country_cc','GSTIN__c','GSTIN_TYPE__c')
+                                ->whereIn('BP_Code__c', $customer_ids)
+                                ->where('address_Type__c', 'S')
+                                ->get()->toArray();
+            //Customer PDC Query
+            $pdc_customers = DB::table('Vw_PDC_OnHold_Data')
+                                ->whereIn('Customer_Code__c', $customer_ids)
+                                ->get()->toArray();
 
-            $customers->map(function($customer){
-                //Get customer shipping addresses
-                $customer->ship_to_party = (object)['records'=>[]];
-                $shipping_customers = Customer::select('Address_Street__c','Address_Block__c','Address_Building__c','Address_StreetNo__c','Address_City__c','Address_ZipCode__c','Address_State__c','Address_Country_cc','GSTIN__c','GSTIN_TYPE__c')
-                            ->where('BP_Code__c', $customer->BP_Code__c)
-                            ->where('address_Type__c', 'S')->get();
-                if($shipping_customers){
-                    foreach($shipping_customers as $key=>$shipping_customer){
-                        $customer->ship_to_party->records[$key] = $shipping_customer;
-                    }
-                }
-
-                //Get customer PDC
-                $customer->pdc = (object)['records'=>[]];
-                $pdc_customers = DB::table('Vw_PDC_OnHold_Data')->where('Customer_Code__c', $customer->BP_Code__c)->get();
-                if($pdc_customers){
-                    foreach($pdc_customers as $key=>$pdc_customer){
-                        $customer->pdc->records[$key] = $pdc_customer;
-                    }
-                }
-
+            foreach($customers['data'] as $key=>$customer){
                 //Get Customer Ageing
-                $customer_ageing = DB::table('VW_CustomerAgeing')
-                                    ->select('0 - 30', '31 - 60', '61 - 90', '91 - 120', '121 - 150', '151 - 180', '181 - 240', '241 - 300', '301 - 360', '361 +')
-                                    ->where('Customer Code', $customer->BP_Code__c)->get();
-                $customer['ageing'] = $customer_ageing;
-                
-                return $customer;
-            });
-
-            return $customers;
+                foreach($customer_ageing as $ageing){
+                    $ageing_array = (array)$ageing;
+                    if($customer['BP_Code__c'] == $ageing_array['Customer Code']){
+                        $customers['data'][$key] += $ageing_array;
+                    }
+                }
+                //Get customer shipping addresses
+                foreach($shipping_customers as $shipping_customer){
+                    $shipping_array = (array)$shipping_customer;
+                    if($customer['BP_Code__c'] == $shipping_array['BP_Code__c']){
+                        $customers['data'][$key]['ship_to_party']['records'][] = $shipping_array;
+                    }
+                }
+                //Get customer PDC
+                foreach($pdc_customers as $pdc){
+                    $pdc_array = (array)$pdc;
+                    if($customer['BP_Code__c'] == $pdc_array['Customer_Code__c']){
+                        $customers['data'][$key]['pdc']['records'][] = $pdc_array;
+                    }
+                }
+            }
+            
+            return ['success'=>1] + $customers;
         }catch(Exception $e){
-            return json_encode(['success'=>false, "message"=>$e->getMessage()]);
+            return json_encode(['success'=>0, 'message'=>$e->getMessage()]);
         }
     }
 
