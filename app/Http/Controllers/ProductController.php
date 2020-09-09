@@ -38,6 +38,28 @@ class ProductController extends Controller
             if(empty($products['data'])){
                 throw new Exception('Products Not Found.');
             }
+            $product_ids = array_column($products['data'],'Item_Code__c');
+            $product_images = DB::table('Vw_ItemMaster_Image')
+                            ->select('ItemCode','File Name')
+                            ->whereIn('ItemCode', $product_ids)
+                            ->get()->toArray();
+            //->select(DB::raw('STRING_AGG(`File Name`, ", ")'))
+            
+            foreach($products['data'] as $key=>$product){
+                $products['data'][$key]['MRP__c'] = $product['MRP'];
+                unset($products['data'][$key]['MRP']);
+                $products['data'][$key]['WS_Price__c'] = $product['WHS Price'];
+                unset($products['data'][$key]['WHS Price']);
+                
+                $products['data'][$key]['product_images__c'] = '';
+                foreach($product_images as $images){
+                    $images = (array)$images;
+                    if($product['Item_Code__c'] == $images['ItemCode']){
+                        $products['data'][$key]['product_images__c'] .= $images['File Name'].', ';
+                    }
+                }
+                $products['data'][$key]['product_images__c'] = trim($products['data'][$key]['product_images__c'],', ');
+            }
             return ['success'=>1] + $products;
         }catch(Exception $e){
             return json_encode(['success'=>0, "message"=>$e->getMessage()]);
