@@ -24,7 +24,7 @@ class ProductController extends Controller
         try{
             $brandcode = $this->validateAndGetUserBrand($request);
             $brands = (!empty($request->brand)) ? preg_split('#[,\s]+#', $request->brand) : [];
-            $collection = (!empty($request->collection)) ? explode(', ', $request->collection) : [];
+            $collection = (!empty($request->collection)) ? preg_split('#[,\s]+#', $request->collection) : [];
             $products = Product::whereIn('Item_Group_Code__c', $brandcode)
                                 ->when(!empty($brands), function($query) use ($brands){
                                     return $query->whereIn('Brand__c', $brands);
