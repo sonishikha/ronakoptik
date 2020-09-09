@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\ApiValidation;
 
 use App\Product;
+use App\Warehouse;
 use Exception;
 
 
@@ -38,10 +39,18 @@ class ProductController extends Controller
 
     public function filter(Request $request){
         try{
-            $brandcode = $this->validateAndGetUserBrand($request);
+            $api_validation = new ApiValidation;
+            $user = $api_validation->validateAndGetUser($request);
+            
+            //Get user brands
+            $brands = $api_validation->getUserBrand($user->id);
+            if($brands->count() == 0){
+                throw new Exception('User Brand Not Found.');
+            }
+            $brandcode = $brands->pluck('brandcode');
             
             $products = Product::whereIn('Item_Group_Code__c', $brandcode)
-                                ->join('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
+                                ->leftjoin('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
                                 ->get()->toArray();
             if(empty($products)){
                 throw new Exception('Products Not Found.');
@@ -59,6 +68,18 @@ class ProductController extends Controller
                     $data['data']['gender'][] = strtoupper($product['Category__c']);
                 }
             } 
+            
+            //Get user warehouse
+            $warehouses = $api_validation->getUserWarehouse($user->id);
+            if($warehouses->count() == 0){
+                throw new Exception('User Warehouse Not Found.');
+            }
+            $warehouse_code = $warehouses->pluck('whouse_code');
+            $warehouse_details = Warehouse::whereIn('Warehouse_Code__c', $warehouse_code)->get()->toArray();
+            foreach($warehouse_details as $warehouse){
+                $data['data']['warehouse_list'][$warehouse['Warehouse_Code__c']] = $warehouse['Warehouse_Name__c'];
+            }
+            
             return json_encode(['success'=>1] + $data);
         }catch(Exception $e){
             return json_encode(['success'=>0, 'message'=>$e->getMessage()]);
