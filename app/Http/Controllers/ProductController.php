@@ -77,7 +77,7 @@ class ProductController extends Controller
             $warehouse_code = $warehouses->pluck('whouse_code');
             $warehouse_details = Warehouse::whereIn('Warehouse_Code__c', $warehouse_code)->get()->toArray();
             foreach($warehouse_details as $warehouse){
-                $data['data']['warehouse_list'][$warehouse['Warehouse_Code__c']] = $warehouse['Warehouse_Name__c'];
+                $data['data']['warehouse_list'][] = $warehouse['Warehouse_Name__c'];
             }
             
             return json_encode(['success'=>1] + $data);
