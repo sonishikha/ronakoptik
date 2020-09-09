@@ -27,10 +27,12 @@ class JwtAuthController extends Controller
         $payload = JWTAuth::decode($token_obj)->toArray();
         $insert_response = $this->storeJwtAuthAttemptData($token, $payload, $request);
         $res_json = json_decode($insert_response, true)['insert_array']; 
+        preg_match('#(.*?\/\/.*?\/[a-z].*?)\/#',$res_json['instance_url'],$url_match);
+        $instance_url = $url_match[1];
         return response()->json([
                             'user_id' => $res_json['user_id'],
                             'email' => $res_json['email'],
-                            'instance_url' => $res_json['instance_url'],
+                            'instance_url' => $instance_url,
                             'token_type' => $res_json['token_type'],
                             'access_token' => $res_json['access_token'],
                             'issued_at' => $res_json['issued_at'],
