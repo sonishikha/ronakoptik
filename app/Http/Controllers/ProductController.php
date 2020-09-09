@@ -56,18 +56,23 @@ class ProductController extends Controller
                 throw new Exception('Products Not Found.');
             }
             
-            $data['data'] = array('collection_list'=>[], 'brand_list'=>[], 'gender'=>[]);
+            $data['data'] = array('collectionList'=>[], 'BRANDLIST'=>[], 'filGenderList'=>[], 'filmrpList'=>[], );
             foreach($products as $product){
-                if(!empty($product['Collection__c']) && !in_array($product['Collection__c'], $data['data']['collection_list'])){
-                    $data['data']['collection_list'][] = $product['Collection__c'];
+                if(!empty($product['Collection__c']) && !in_array($product['Collection__c'], $data['data']['collectionList'])){
+                    $data['data']['collectionList'][] = $product['Collection__c'];
                 }
-                if(!empty($product['Brand__c']) && !in_array($product['Brand__c'], $data['data']['brand_list'])){
-                    $data['data']['brand_list'][] = $product['Brand__c'];
+                if(!empty($product['Brand__c']) && !in_array($product['Brand__c'], $data['data']['BRANDLIST'])){
+                    $data['data']['BRANDLIST'][] = $product['Brand__c'];
                 }
-                if(!empty($product['Category__c']) && !in_array(strtoupper($product['Category__c']), $data['data']['gender'])){
-                    $data['data']['gender'][] = strtoupper($product['Category__c']);
+                if(!empty($product['Category__c']) && !in_array(strtoupper($product['Category__c']), $data['data']['filGenderList'])){
+                    $data['data']['filGenderList'][] = strtoupper($product['Category__c']);
                 }
             } 
+            $mrps = array_column($products, 'MRP');
+            if(!empty($mrps)){
+                $data['data']['filmrpList'][] = min($mrps);
+                $data['data']['filmrpList'][] = max($mrps);
+            }
             
             //Get user warehouse
             $warehouses = $api_validation->getUserWarehouse($user->id);
@@ -77,7 +82,7 @@ class ProductController extends Controller
             $warehouse_code = $warehouses->pluck('whouse_code');
             $warehouse_details = Warehouse::whereIn('Warehouse_Code__c', $warehouse_code)->get()->toArray();
             foreach($warehouse_details as $warehouse){
-                $data['data']['warehouse_list'][] = $warehouse['Warehouse_Name__c'];
+                $data['data']['WAREHOUSELIST'][] = $warehouse['Warehouse_Name__c'];
             }
             
             return json_encode(['success'=>1] + $data);
@@ -98,14 +103,11 @@ class ProductController extends Controller
             }
             
             $data['data'] = array('ws_price'=>[], 'tip_color'=>[], 'temple_material'=>[], 'temple_color'=>[],
-                                'size_list'=>[], 'shape_list'=>[], 'mrp'=>[], 'front_color'=>[], 
-                                'frame_structure'=>[], 'frame_material'=>[], 'lens_material'=>[]);
+                                'size_list'=>[], 'shape_list'=>[], 'front_color'=>[], 'frame_structure'=>[], 
+                                'frame_material'=>[], 'lens_material'=>[]);
             foreach($products as $product){
                 if(!empty($product['WHS Price']) && !in_array($product['WHS Price'], $data['data']['ws_price'])){
                     $data['data']['ws_price'][] = $product['WHS Price'];
-                }
-                if(!empty($product['MRP']) && !in_array($product['MRP'], $data['data']['mrp'])){
-                    $data['data']['mrp'][] = $product['MRP'];
                 }
                 if(!empty($product['Tips_Color__c']) && !in_array(strtoupper($product['Tips_Color__c']), $data['data']['tip_color'])){
                     $data['data']['tip_color'][] = strtoupper($product['Tips_Color__c']);
@@ -117,7 +119,10 @@ class ProductController extends Controller
                     $data['data']['temple_color'][] = strtoupper($product['Temple_Color__c']);
                 }
                 if(!empty($product['Size__c']) && !in_array(strtoupper($product['Size__c']), $data['data']['size_list'])){
-                    $data['data']['size_list'][] = strtoupper($product['Size__c']);
+                    $sizes = preg_split('#[\s]+#',$product['Size__c']);
+                    $data['data']['filSizeList'][] = $sizes[0];
+                    $data['data']['filSizeList1'][] = $sizes[1];
+                    $data['data']['filSizeList2'][] = $sizes[2];
                 }
                 if(!empty($product['Shape__c']) && !in_array(strtoupper($product['Shape__c']), $data['data']['shape_list'])){
                     $data['data']['shape_list'][] = strtoupper($product['Shape__c']);
