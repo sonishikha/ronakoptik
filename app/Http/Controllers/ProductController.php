@@ -23,10 +23,17 @@ class ProductController extends Controller
     {
         try{
             $brandcode = $this->validateAndGetUserBrand($request);
-            
+            $brands = (!empty($request->brand)) ? preg_split('#[,\s]+#', $request->brand) : [];
+            $collection = (!empty($request->collection)) ? explode(', ', $request->collection) : [];
             $products = Product::whereIn('Item_Group_Code__c', $brandcode)
-                                ->join('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
-                                ->paginate(100, ['*'], 'page', $request->offSet)
+                                ->when(!empty($brands), function($query) use ($brands){
+                                    return $query->whereIn('Brand__c', $brands);
+                                })
+                                ->when(!empty($collection), function($query) use ($collection){
+                                    return $query->whereIn('Collection_Name__c', $collection);
+                                })
+                                ->leftjoin('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
+                                ->paginate(200, ['*'], 'page', $request->offSet)
                                 ->toArray();
             if(empty($products['data'])){
                 throw new Exception('Products Not Found.');
