@@ -40,7 +40,8 @@ class CustomerController extends Controller
             $customer_ids = array_column($customers['data'],'BP_Code__c');
             
             //Customer Ageing Query
-            $customer_ageing = DB::table('VW_CustomerAgeing') 
+            $customer_ageing = DB::table('VW_CustomerAgeing')
+                                ->select('Customer Code', '0 - 30 as x0_30__c ','31 - 60 as x31_60__c', '61 - 90 as x61_90__c', '91 - 120 as x91_120__c', '121 - 150 as x121_150__c', '151 - 180 as x151_180__c', '181 - 240 as x181_240__c', '241 - 300 as x241_300__c', '301 - 360 as x301_360__c', '361 + as x361__c') 
                                 ->whereIn('Customer Code', $customer_ids)
                                 ->get()->toArray();
             //Customer Shipping Address Query
