@@ -78,42 +78,51 @@ class ProductController extends Controller
             }
             $brandcode = $brands->pluck('brandcode');
             
-            $products = Product::whereIn('Item_Group_Code__c', $brandcode)
-                                ->leftjoin('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
-                                ->get()->toArray();
-            if(empty($products)){
-                throw new Exception('Products Not Found.');
-            }
-            
-            $data['data'] = array('collectionList'=>[], 'BRANDLIST'=>[], 'filGenderList'=>[], 'filmrpList'=>[], );
-            foreach($products as $product){
-                if(!empty($product['Collection__c']) && !in_array($product['Collection__c'], $data['data']['collectionList'])){
-                    $data['data']['collectionList'][] = $product['Collection__c'];
-                }
-                if(!empty($product['Brand__c']) && !in_array($product['Brand__c'], $data['data']['BRANDLIST'])){
-                    $data['data']['BRANDLIST'][] = $product['Brand__c'];
-                }
-                if(!empty($product['Category__c']) && !in_array(strtoupper($product['Category__c']), $data['data']['filGenderList'])){
-                    $data['data']['filGenderList'][] = strtoupper($product['Category__c']);
-                }
-            } 
-            $mrps = array_column($products, 'MRP');
-            if(!empty($mrps)){
-                $data['data']['filmrpList'][] = min($mrps);
-                $data['data']['filmrpList'][] = max($mrps);
-            }
-            
+            $data['data'] = array('WAREHOUSELIST'=>[], 'WAREHOUSEBRANDLIST'=>[], 'BRANDLIST'=>[], 'collectionList'=>[], 'filGenderList'=>[], 'filmrpList'=>[]);
             //Get user warehouse
             $warehouses = $api_validation->getUserWarehouse($user->id);
-            if($warehouses->count() == 0){
-                throw new Exception('User Warehouse Not Found.');
-            }
-            $warehouse_code = $warehouses->pluck('whouse_code');
-            $warehouse_details = Warehouse::whereIn('Warehouse_Code__c', $warehouse_code)->get()->toArray();
-            foreach($warehouse_details as $warehouse){
-                $data['data']['WAREHOUSELIST'][] = $warehouse['Warehouse_Name__c'];
+            $warehouse_item_list = array();
+            if($warehouses->count() != 0){
+                $warehouse_code = $warehouses->pluck('whouse_code');
+                $warehouse_details = Warehouse::select('Warehouse_Name__c','ItemCode')
+                                                ->whereIn('Warehouse_Code__c', $warehouse_code)
+                                                ->leftjoin('Vw_WarehouseStockDetails as Stock','Vw_WarehouseMaster.Warehouse_Code__c','=','Stock.WhsCode')                                
+                                                ->get()->toArray();
+                foreach($warehouse_details as $warehouse){
+                    if(!in_array($warehouse['Warehouse_Name__c'], $data['data']['WAREHOUSELIST'])){
+                        $data['data']['WAREHOUSELIST'][] = $warehouse['Warehouse_Name__c'];
+                    }
+                    if(!empty($warehouse['ItemCode'] && !in_array($warehouse['ItemCode'], $warehouse_item_list))){
+                        $warehouse_item_list[] = $warehouse['ItemCode'];
+                    }
+                }
             }
             
+            $products = Product::select('Collection__c', 'Brand__c', 'Category__c', 'MRP', 'Item_Code__c')
+                                ->whereIn('Item_Group_Code__c', $brandcode)
+                                ->leftjoin('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
+                                ->get()->toArray();
+            if(!empty($products)){
+                foreach($products as $product){
+                    if(in_array($product['Item_Code__c'], $warehouse_item_list) && !in_array($product['Brand__c'], $data['data']['WAREHOUSEBRANDLIST'])){
+                        $data['data']['WAREHOUSEBRANDLIST'][] = $product['Brand__c'];
+                    }
+                    if(!empty($product['Collection__c']) && !in_array($product['Collection__c'], $data['data']['collectionList'])){
+                        $data['data']['collectionList'][] = $product['Collection__c'];
+                    }
+                    if(!empty($product['Brand__c']) && !in_array($product['Brand__c'], $data['data']['BRANDLIST'])){
+                        $data['data']['BRANDLIST'][] = $product['Brand__c'];
+                    }
+                    if(!empty($product['Category__c']) && !in_array(strtoupper($product['Category__c']), $data['data']['filGenderList'])){
+                        $data['data']['filGenderList'][] = strtoupper($product['Category__c']);
+                    }
+                } 
+                $mrps = array_column($products, 'MRP');
+                if(!empty($mrps)){
+                    $data['data']['filmrpList'][] = min($mrps);
+                    $data['data']['filmrpList'][] = max($mrps);
+                }
+            }
             return json_encode(['success'=>1] + $data);
         }catch(Exception $e){
             return json_encode(['success'=>0, 'message'=>$e->getMessage()]);
