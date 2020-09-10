@@ -34,7 +34,7 @@ class StockController extends Controller
             $warehouse_code = $warehouses->pluck('whouse_code');
             $brand_codes = $api_validation->getUserBrand($user_id)->pluck('brandcode');
 
-            $stock = Warehouse::select('Warehouse_Name__c','ItemCode as Item_Code__c', 'Ordered as Ordered_Quantity__c', 'OnHand as Stock__c')
+            $stock = Warehouse::select('Warehouse_Name__c as Warehouse_Name1__c','ItemCode as Item_Code__c', 'Ordered as Ordered_Quantity__c', 'OnHand as Stock__c')
                                 ->whereIn('Warehouse_Code__c', $warehouse_code)
                                 ->leftjoin('Vw_WarehouseStockDetails as Stock','Vw_WarehouseMaster.Warehouse_Code__c','=','Stock.WhsCode')
                                 ->whereIn('ItemCode', function($query) use ($brand_codes){
