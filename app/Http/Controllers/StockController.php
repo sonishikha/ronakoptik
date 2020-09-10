@@ -7,8 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\ApiValidation;
 
-use App\Stock;
+use App\Warehouse;
 use App\User;
+use App\Product;
 use Exception;
 
 class StockController extends Controller
@@ -24,22 +25,28 @@ class StockController extends Controller
             $api_validation = new ApiValidation;
             $user = $api_validation->validateAndGetUser($request);
             //Get user warehouse
+            $user_id = $user->id;
+            
             $warehouses = $api_validation->getUserWarehouse($user->id);
             if($warehouses->count() == 0){
                 throw new Exception('User Warehouse Not Found.');
             }
             $warehouse_code = $warehouses->pluck('whouse_code');
+            $brand_codes = $api_validation->getUserBrand($user_id)->pluck('brandcode');
             
-            $stock = Stock::whereIn('Warehouse_Code__c', $warehouse_code)
-                                ->join('Vw_WarehouseStockDetails','Vw_WarehouseMaster.Warehouse_Code__c','=','Vw_WarehouseStockDetails.WhsCode')
-                                ->paginate(10, ['*'], 'page', $request->offSet);
+            $stock = Warehouse::whereIn('Warehouse_Code__c', $warehouse_code)
+                                ->leftjoin('Vw_WarehouseStockDetails','Vw_WarehouseMaster.Warehouse_Code__c','=','Vw_WarehouseStockDetails.WhsCode')
+                                ->whereIn('ItemCode', function($query) use ($brand_codes){
+                                    $query->select('Item_Code__c')->from('Vw_ItemMaster')->whereIn('Item_Group_Code__c', $brand_codes);
+                                })
+                                ->paginate(100, ['*'], 'page', $request->offSet)->toArray();
             
-            if($stock->count() == 0){
+            if(empty($stock['data'])){
                 throw New Exception('Stock Details Not Found.');
             }
-            return $stock;
+            return json_encode(['success'=>1] + $stock);
         }catch(Exception $e){
-            return json_encode(['success'=>false, "message"=>$e->getMessage()]);
+            return json_encode(['success'=>0, "message"=>$e->getMessage()]);
         }
     }
 }
