@@ -58,6 +58,11 @@ class CustomerController extends Controller
                 //Get Customer Ageing
                 foreach($customer_ageing as $ageing){
                     $ageing_array = (array)$ageing;
+                    foreach($ageing_array as $age_key=>$age){
+                        if(is_numeric($age)){
+                            $ageing_array[$age_key] = round($age);
+                        }    
+                    }
                     if($customer['BP_Code__c'] == $ageing_array['Customer Code']){
                         $customers['data'][$key] += $ageing_array;
                     }

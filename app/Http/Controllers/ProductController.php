@@ -46,9 +46,9 @@ class ProductController extends Controller
             //->select(DB::raw('STRING_AGG(`File Name`, ", ")'))
             
             foreach($products['data'] as $key=>$product){
-                $products['data'][$key]['MRP__c'] = $product['MRP'];
+                $products['data'][$key]['MRP__c'] = round($product['MRP']);
                 unset($products['data'][$key]['MRP']);
-                $products['data'][$key]['WS_Price__c'] = $product['WHS Price'];
+                $products['data'][$key]['WS_Price__c'] = round($product['WHS Price']);
                 unset($products['data'][$key]['WHS Price']);
                 
                 $products['data'][$key]['product_images__c'] = '';
@@ -119,8 +119,8 @@ class ProductController extends Controller
                 } 
                 $mrps = array_column($products, 'MRP');
                 if(!empty($mrps)){
-                    $data['data']['filmrpList'][] = min($mrps);
-                    $data['data']['filmrpList'][] = max($mrps);
+                    $data['data']['filmrpList'][] = round(min($mrps));
+                    $data['data']['filmrpList'][] = round(max($mrps));
                 }
             }
             return json_encode(['success'=>1] + $data);
@@ -203,13 +203,16 @@ class ProductController extends Controller
             if(empty($request->product_id)){
                 throw New Exception('Please Provide Product Id.');
             }
-            $product = Product::select('*','WHS Price as WS_Price__c','MRP as MRP__c')
-                            ->where('Item_Code__c', $request->product_id)
+            $product = Product::where('Item_Code__c', $request->product_id)
                             ->leftjoin('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
-                            ->get()->toArray();
+                            ->first()->toArray();
             if(empty($product)){
                 throw New Exception('Product Not Found.');
             }
+            $product['MRP__c'] = round($product['MRP']);
+            unset($product['MRP']);       
+            $product['WS_Price__c'] = round($product['WHS Price']);
+            unset($product['WHS Price']);       
             return json_encode(['success'=>1] + ["data"=>$product]);
         }catch(Exception $e){
             return json_encode(['success'=>0, 'message'=>$e->getMessage()]);
