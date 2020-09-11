@@ -197,4 +197,22 @@ class ProductController extends Controller
         $brandcode = $brands->pluck('brandcode');
         return $brandcode;
     }
+
+    public function getProductDetails(Request $request){
+        try{
+            if(empty($request->product_id)){
+                throw New Exception('Please Provide Product Id.');
+            }
+            $product = Product::select('*','WHS Price as WS_Price__c','MRP as MRP__c')
+                            ->where('Item_Code__c', $request->product_id)
+                            ->leftjoin('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
+                            ->get()->toArray();
+            if(empty($product)){
+                throw New Exception('Product Not Found.');
+            }
+            return json_encode(['success'=>1] + ["data"=>$product]);
+        }catch(Exception $e){
+            return json_encode(['success'=>0, 'message'=>$e->getMessage()]);
+        }
+    }
 }

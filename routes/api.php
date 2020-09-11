@@ -26,6 +26,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('user', 'JwtAuthController@getAuthenticatedUser');
     Route::post('customers', 'CustomerController@index');
     Route::post('products', 'ProductController@index');
+    Route::post('product', 'ProductController@getProductDetails');
     Route::post('filter', 'ProductController@filter');
     Route::post('advance_filter', 'ProductController@advanceFilter');
     Route::post('stocks', 'StockController@index');
