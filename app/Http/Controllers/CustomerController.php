@@ -77,6 +77,7 @@ class CustomerController extends Controller
                 //Get customer PDC
                 foreach($pdc_customers as $pdc){
                     $pdc_array = (array)$pdc;
+                    $pdc_array['Amount__c'] = round($pdc_array['Amount__c']);
                     if($customer['BP_Code__c'] == $pdc_array['Customer_Code__c']){
                         $customers['data'][$key]['pdc']['records'][] = $pdc_array;
                     }

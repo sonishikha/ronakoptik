@@ -43,6 +43,10 @@ class StockController extends Controller
             if(empty($stock['data'])){
                 throw New Exception('Stock Details Not Found.');
             }
+            foreach($stock['data'] as $key=>$value){
+                $stock['data'][$key]['Ordered_Quantity__c'] = round($value['Ordered_Quantity__c']);
+                $stock['data'][$key]['Stock__c'] = round($value['Stock__c']);
+            }
             return json_encode(['success'=>1] + $stock);
         }catch(Exception $e){
             return json_encode(['success'=>0, "message"=>$e->getMessage()]);
