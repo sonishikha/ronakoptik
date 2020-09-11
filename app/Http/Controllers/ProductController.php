@@ -212,7 +212,13 @@ class ProductController extends Controller
             $product['MRP__c'] = round($product['MRP']);
             unset($product['MRP']);       
             $product['WS_Price__c'] = round($product['WHS Price']);
-            unset($product['WHS Price']);       
+            unset($product['WHS Price']);    
+           
+            $product_images = DB::table('Vw_ItemMaster_Image')
+                            ->select('File Name')
+                            ->where('ItemCode', $request->product_id)
+                            ->get()->toArray();   
+            $product['product_images__c'] = (!empty($product_images)) ? implode(', ', array_column($product_images, 'File Name')) : '';
             return json_encode(['success'=>1] + ["data"=>$product]);
         }catch(Exception $e){
             return json_encode(['success'=>0, 'message'=>$e->getMessage()]);
