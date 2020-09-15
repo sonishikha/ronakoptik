@@ -29,9 +29,9 @@ class CustomerController extends Controller
             if(!$region){
                 throw new Exception('User Region Not Found.');
             }
-           
+            $region = $region->pluck('region_code')->unique();
             //Get customer details
-            $customers = Customer::where('Region__c', $region->region_code)
+            $customers = Customer::whereIn('Region__c', $region)
                                 ->where('address_Type__c', 'B')
                                 ->paginate(200, ['*'], 'page', $request->offSet)->toArray();
             if(empty($customers['data'])){
