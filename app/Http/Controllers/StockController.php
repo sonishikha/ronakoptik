@@ -38,7 +38,7 @@ class StockController extends Controller
                                 ->whereIn('ItemCode', function($query) use ($brands){
                                     $query->select('Item_Code__c')->from('Vw_ItemMaster')->whereIn('Brand__c', $brands);
                                 })
-                                ->paginate(100, ['*'], 'page', $request->offSet)->toArray();
+                                ->paginate(500, ['*'], 'page', $request->offSet)->toArray();
             
             if(empty($stock['data'])){
                 throw New Exception('Stock Details Not Found.');
