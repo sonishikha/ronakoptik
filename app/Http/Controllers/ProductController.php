@@ -104,13 +104,13 @@ class ProductController extends Controller
                                 ->get()->toArray();
             if(!empty($products)){
                 foreach($products as $product){
-                    if(in_array($product['Item_Code__c'], $warehouse_item_list) && !in_array($product['Brand__c'], $data['data']['WAREHOUSEBRANDLIST'])){
+                    if(in_array($product['Item_Code__c'], $warehouse_item_list) && !in_array($product['Brand__c'], $data['data']['WAREHOUSEBRANDLIST']) && $product['Brand__c'] != null){
                         $data['data']['WAREHOUSEBRANDLIST'][] = $product['Brand__c'];
                     }
-                    if(!empty($product['Collection__c']) && !in_array($product['Collection__c'], $data['data']['collectionList'])){
+                    if(!empty($product['Collection__c']) && !in_array($product['Collection__c'], $data['data']['collectionList']) && $product['Collection__c'] != null){
                         $data['data']['collectionList'][] = $product['Collection__c'];
                     }
-                    if(!empty($product['Brand__c']) && !in_array($product['Brand__c'], $data['data']['BRANDLIST'])){
+                    if(!empty($product['Brand__c']) && !in_array($product['Brand__c'], $data['data']['BRANDLIST'])  && $product['Brand__c'] != null){
                         $data['data']['BRANDLIST'][] = $product['Brand__c'];
                     }
                     if(!empty($product['Category__c']) && !in_array(strtoupper($product['Category__c']), $data['data']['filGenderList'])){
@@ -119,8 +119,8 @@ class ProductController extends Controller
                 } 
                 $mrps = array_column($products, 'MRP');
                 if(!empty($mrps)){
-                    $data['data']['filmrpList'][] = round(min($mrps));
-                    $data['data']['filmrpList'][] = round(max($mrps));
+                    $data['data']['filmrpList'][] = "".round(min($mrps))."";
+                    $data['data']['filmrpList'][] = "".round(max($mrps))."";
                 }
             }
             return json_encode(['success'=>1] + $data);
