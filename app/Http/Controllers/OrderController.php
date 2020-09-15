@@ -36,6 +36,7 @@ class OrderController extends Controller
                 $order->creator_id = $creator_id;
                 $order->bp_code = $sale_order['account'];
                 $order->tax_code = 'test';
+                $order->local_id = $sale_order['local_id'];
                 $order->billing_address = $billing_address;
                 $order->shipping_address = $shipping_address;
                 $order->cash_discount = $sale_order['Discount'];
