@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Order;
 use App\Model\OrderItems;
+use App\Models\ApiValidation;
 use App\Customer;
 use App\User;
 use App\Product;
@@ -65,5 +66,46 @@ class OrderController extends Controller
         }catch(Exception $e){
             return json_encode(['success'=>0, "message"=>$e->getMessage()]);
         }
+    }
+
+    public function getInvoiceList(Request $request){
+        try{
+            $api_validation = new ApiValidation;
+            $user = $api_validation->validateAndGetUser($request);
+            
+            $order_data = Order::select(
+                                'id as invoice_id','bp_code as account_id','tax_code as taxCode',
+                                'shipping_address as shipToParty','cash_discount as discount',
+                                'comments as remarks','ts as createdDate','status')
+                                ->where('creator_id', $user->id)
+                                ->orderBy('ts', 'desc')
+                                ->paginate(100, ['*'], 'page', $request->offSet);
+            foreach($order_data as $key=>$order){
+                $customer_address = Customer::select('Customer_Name__c')
+                                    ->where('BP_Code__c',$order['account_id'])
+                                    ->get();
+                $order_data[$key]->customer_name = $customer_address[0]->Customer_Name__c;
+                $items = OrderItems::where('tran_id',$order['invoice_id'])->get();
+                $order_items = [];
+                foreach($items as $item){
+                    $product = Product::select('Item_Name__c', 'Brand__c', 'Collection__c', 'Product__c')->where('Item_Code__c',$item['item_code'])->get();
+                    $order_items[] = array(
+                        'ProductId' => $item['item_code'],
+                        'ProductName' => $product[0]->Item_Name__c,
+                        'Brand' => $product[0]->Brand__c,
+                        'Collection' => $product[0]->Collection__c,
+                        'Category' => $product[0]->Product__c,
+                        'Quantity' => $item['quantity'],
+                        'group_code' => $item['group_code'],
+                        'Price' => $item['price'],
+                        'Discount' => $item['discount']
+                    );
+                }
+                $order_data[$key]->saleOrdeLineItems = $order_items;
+            }
+            return $order_data;  
+        }catch(Exception $e){
+            return json_encode(['success'=>0, "message"=>$e->getMessage()]);
+        }      
     }
 }

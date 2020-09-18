@@ -31,4 +31,5 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::post('advance_filter', 'ProductController@advanceFilter');
     Route::post('stocks', 'StockController@index');
     Route::post('save_order', 'OrderController@store');
+    Route::post('invoices', 'OrderController@getInvoiceList');
 });
