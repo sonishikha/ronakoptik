@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Order;
-use App\Model\OrderItems;
+use App\Models\OrderItems;
 use App\Models\ApiValidation;
 use App\Customer;
 use App\User;
@@ -41,7 +41,7 @@ class OrderController extends Controller
                 $order->billing_address = $billing_address;
                 $order->shipping_address = $shipping_address;
                 $order->cash_discount = $sale_order['Discount'];
-                $order->comments = $sale_order['Remarks'];
+                $order->comments = (empty($sale_order['Remarks'])) ? 'No Comments' : $sale_order['Remarks'];
                 $result = $order->save();
                 if($result){
                     if(empty($sale_order['saleOrdeLineItems'])){
@@ -58,11 +58,11 @@ class OrderController extends Controller
                         $order_item->discount = $item['Discount'];
                         $order_item->save();
                     }
+                    return json_encode(['success'=>1]);
                 }else{
                     throw New Exception('Cannot create order. Please try again.');
                 }
             }
-            return json_encode(['success'=>1]);
         }catch(Exception $e){
             return json_encode(['success'=>0, "message"=>$e->getMessage()]);
         }
@@ -72,38 +72,52 @@ class OrderController extends Controller
         try{
             $api_validation = new ApiValidation;
             $user = $api_validation->validateAndGetUser($request);
-            
-            $order_data = Order::select(
-                                'id as invoice_id','bp_code as account_id','tax_code as taxCode',
-                                'shipping_address as shipToParty','cash_discount as discount',
-                                'comments as remarks','ts as createdDate','status')
+           
+            $order_data = Order::with('OrderItems')
                                 ->where('creator_id', $user->id)
                                 ->orderBy('ts', 'desc')
                                 ->paginate(100, ['*'], 'page', $request->offSet);
-            foreach($order_data as $key=>$order){
-                $customer_address = Customer::select('Customer_Name__c')
-                                    ->where('BP_Code__c',$order['account_id'])
-                                    ->get();
-                $order_data[$key]->customer_name = $customer_address[0]->Customer_Name__c;
-                $items = OrderItems::where('tran_id',$order['invoice_id'])->get();
-                $order_items = [];
-                foreach($items as $item){
-                    $product = Product::select('Item_Name__c', 'Brand__c', 'Collection__c', 'Product__c')->where('Item_Code__c',$item['item_code'])->get();
-                    $order_items[] = array(
-                        'ProductId' => $item['item_code'],
-                        'ProductName' => $product[0]->Item_Name__c,
-                        'Brand' => $product[0]->Brand__c,
-                        'Collection' => $product[0]->Collection__c,
-                        'Category' => $product[0]->Product__c,
-                        'Quantity' => $item['quantity'],
-                        'group_code' => $item['group_code'],
-                        'Price' => $item['price'],
-                        'Discount' => $item['discount']
-                    );
-                }
-                $order_data[$key]->saleOrdeLineItems = $order_items;
+            if($order_data->count() == 0){
+                throw New Exception('No Records Found.');
             }
-            return $order_data;  
+
+            $customer_ids = $order_data->pluck('bp_code');
+            $customers = Customer::select('BP_Code__c','Customer_Name__c')
+                                ->whereIn('BP_Code__c',$customer_ids)->get();
+            $customers = $customers->pluck('Customer_Name__c','BP_Code__c');
+
+            $invoice_array = [];
+            foreach($order_data as $key=>$order){
+                $invoice_array[$key]['invoice_id'] = $order->id;
+                $invoice_array[$key]['account_id'] = $order->bp_code;
+                $invoice_array[$key]['local_id'] = $order->local_id;
+                $invoice_array[$key]['taxCode'] = $order->tax_code;
+                $invoice_array[$key]['shipToParty'] = $order->shipping_address;
+                $invoice_array[$key]['discount'] = $order->cash_discount;
+                $invoice_array[$key]['remarks'] = $order->comments;
+                $invoice_array[$key]['createdDate'] = $order->ts;
+                $invoice_array[$key]['status'] = $order->status;
+                $invoice_array[$key]['customer_name'] = $customers[$order['bp_code']];
+                $order_items = [];
+                $item_ids = $order->OrderItems->pluck('item_code');
+                $products = Product::select('Item_Code__c','Item_Name__c', 'Brand__c', 'Collection__c', 'Product__c')->whereIn('Item_Code__c',$item_ids)->get()->keyBy('Item_Code__c');
+                foreach($order->OrderItems as $item){
+                    $product = $products[$item->item_code];
+                    $order_items[] = array(
+                                'ProductId' => $item->item_code,
+                                'ProductName' => $product->Item_Name__c,
+                                'Brand' => $product->Brand__c,
+                                'Collection' => $product->Collection__c,
+                                'Category' => $product->Product__c,
+                                'Quantity' => $item->quantity,
+                                'group_code' => $item->group_code,
+                                'Price' => $item->price,
+                                'Discount' => $item->discount
+                            );
+                }
+                $invoice_array[$key]['saleOrdeLineItems'] = $order_items;
+            }
+            return json_encode(array('success' => 1, 'data'=>$invoice_array));  
         }catch(Exception $e){
             return json_encode(['success'=>0, "message"=>$e->getMessage()]);
         }      
