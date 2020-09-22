@@ -10,9 +10,9 @@ use Exception;
 
 class ApiValidation extends Model
 {
-    public function validateAndGetUser($request)
+    public function validateAndGetUser($request, $offset = false, $sync = false)
     {
-        $validator = $this->validateRequest($request);
+        $validator = $this->validateRequest($request, $offset, $sync);
         if($validator->fails()){
             throw New Exception($validator->messages()->first());
         }
@@ -25,15 +25,19 @@ class ApiValidation extends Model
         return $user;
     }
 
-    public function validateRequest($request)
+    public function validateRequest($request, $offset, $sync)
     {
         $validator = Validator::make($request->all(), 
                     array(
-                        "userName" => "required|email",
-                        "offSet" => "required|int",
-                        "sync" => ["required", Rule::in(['no','yes',"No","Yes","NO","YES"]),],
+                        'userName' => 'required|email',
                     )
         );
+        $validator->sometimes('offSet', 'required|int', function () use ($offset) {
+            return $offset === true;
+        });
+        $validator->sometimes('sync', ['required', Rule::in(['no','yes','No','Yes','NO','YES']),], function () use ($sync) {
+            return $sync === true;
+        });
         return $validator;
     }
 

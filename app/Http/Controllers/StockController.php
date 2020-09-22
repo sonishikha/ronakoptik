@@ -23,7 +23,8 @@ class StockController extends Controller
     {
         try{
             $api_validation = new ApiValidation;
-            $user = $api_validation->validateAndGetUser($request);
+            $user = $api_validation->validateAndGetUser($request, true);
+            
             //Get user warehouse
             $warehouses = $api_validation->getUserWarehouse($user->id);
             if($warehouses->count() == 0){

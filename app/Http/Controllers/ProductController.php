@@ -22,7 +22,10 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         try{
-            $brandcode = $this->validateAndGetUserBrand($request);
+            $api_validation = new ApiValidation;
+            $user = $api_validation->validateAndGetUser($request, true);
+            $brandcode = $this->getUserBrands($user->id);
+
             $brands = (!empty($request->brand)) ? preg_split('#[,\s]+#', $request->brand) : [];
             $collection = (!empty($request->collection)) ? preg_split('#[,\s]+#', $request->collection) : [];
             $products = Product::whereIn('Item_Group_Code__c', $brandcode)
@@ -43,7 +46,6 @@ class ProductController extends Controller
                             ->select('ItemCode','File Name')
                             ->whereIn('ItemCode', $product_ids)
                             ->get()->toArray();
-            //->select(DB::raw('STRING_AGG(`File Name`, ", ")'))
             
             foreach($products['data'] as $key=>$product){
                 $products['data'][$key]['MRP__c'] = round($product['MRP']);
@@ -68,16 +70,11 @@ class ProductController extends Controller
 
     public function filter(Request $request){
         try{
+            
             $api_validation = new ApiValidation;
             $user = $api_validation->validateAndGetUser($request);
-            
-            //Get user brands
-            $brands = $api_validation->getUserBrand($user->id);
-            if($brands->count() == 0){
-                throw new Exception('User Brand Not Found.');
-            }
-            $brandcode = $brands->pluck('brandcode');
-            
+            $brandcode = $this->getUserBrands($user->id);
+           
             $data['data'] = array('WAREHOUSELIST'=>[], 'WAREHOUSEBRANDLIST'=>[], 'BRANDLIST'=>[], 'collectionList'=>[], 'filGenderList'=>[], 'filmrpList'=>[]);
             //Get user warehouse
             $warehouses = $api_validation->getUserWarehouse($user->id);
@@ -85,8 +82,8 @@ class ProductController extends Controller
             if($warehouses->count() != 0){
                 $warehouse_code = $warehouses->pluck('whouse_code');
                 $warehouse_details = Warehouse::select('Warehouse_Name__c','ItemCode')
+                                                ->leftjoin('Vw_WarehouseStockDetails as Stock','Vw_WarehouseMaster.Warehouse_Code__c','=','Stock.WhsCode')
                                                 ->whereIn('Warehouse_Code__c', $warehouse_code)
-                                                ->leftjoin('Vw_WarehouseStockDetails as Stock','Vw_WarehouseMaster.Warehouse_Code__c','=','Stock.WhsCode')                                
                                                 ->get()->toArray();
                 foreach($warehouse_details as $warehouse){
                     if(!in_array($warehouse['Warehouse_Name__c'], $data['data']['WAREHOUSELIST'])){
@@ -98,14 +95,16 @@ class ProductController extends Controller
                 }
             }
             
-            $products = Product::select('Collection__c', 'Brand__c', 'Category__c', 'MRP', 'Item_Code__c')
+            $products = Product::select('Collection__c', 'Brand__c', 'Category__c', 'Item_Code__c')
                                 ->whereIn('Item_Group_Code__c', $brandcode)
-                                ->leftjoin('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
                                 ->get()->toArray();
+            
             if(!empty($products)){
                 foreach($products as $product){
-                    if(in_array($product['Item_Code__c'], $warehouse_item_list) && !in_array($product['Brand__c'], $data['data']['WAREHOUSEBRANDLIST']) && $product['Brand__c'] != null){
-                        $data['data']['WAREHOUSEBRANDLIST'][] = $product['Brand__c'];
+                    if($product['Brand__c'] != null && !in_array($product['Brand__c'], $data['data']['WAREHOUSEBRANDLIST'])){
+                        if(in_array($product['Item_Code__c'], $warehouse_item_list) ){
+                            $data['data']['WAREHOUSEBRANDLIST'][] = $product['Brand__c'];
+                        }
                     }
                     if(!empty($product['Collection__c']) && !in_array($product['Collection__c'], $data['data']['collectionList']) && $product['Collection__c'] != null){
                         $data['data']['collectionList'][] = $product['Collection__c'];
@@ -116,11 +115,6 @@ class ProductController extends Controller
                     if(!empty($product['Category__c']) && !in_array(strtoupper($product['Category__c']), $data['data']['filGenderList'])){
                         $data['data']['filGenderList'][] = strtoupper($product['Category__c']);
                     }
-                } 
-                $mrps = array_column($products, 'MRP');
-                if(!empty($mrps)){
-                    $data['data']['filmrpList'][] = "".round(min($mrps))."";
-                    $data['data']['filmrpList'][] = "".round(max($mrps))."";
                 }
             }
             return json_encode(['success'=>1] + $data);
@@ -131,11 +125,15 @@ class ProductController extends Controller
 
     public function advanceFilter(Request $request){
         try{
-            $brandcode = $this->validateAndGetUserBrand($request);
-
-            $products = Product::whereIn('Item_Group_Code__c', $brandcode)
-                                ->join('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
+            $api_validation = new ApiValidation;
+            $user = $api_validation->validateAndGetUser($request);
+            $brandcode = $this->getUserBrands($user->id);
+            
+            $products = Product::join('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
+                                ->whereIn('Item_Group_Code__c', $brandcode)
                                 ->get()->toArray();
+            print_r($products);
+            exit;
             if(empty($products)){
                 throw new Exception('Products Not Found.');
             }
@@ -178,18 +176,21 @@ class ProductController extends Controller
                     $data['data']['lens_material'][] = strtoupper($product['Len_Material_c']);
                 }
             } 
+            $mrps = array_column($products, 'MRP');
+            if(!empty($mrps)){
+                $data['data']['filmrpList'][] = "".round(min($mrps))."";
+                $data['data']['filmrpList'][] = "".round(max($mrps))."";
+            }
             return json_encode(['success'=>1] + $data);
         }catch(Exception $e){
             return json_encode(['success'=>0, 'message'=>$e->getMessage()]);
         }
     }
 
-    protected function validateAndGetUserBrand($request){
+    protected function getUserBrands($user_id){
         $api_validation = new ApiValidation;
-        $user = $api_validation->validateAndGetUser($request);
-        
         //Get user brands
-        $brands = $api_validation->getUserBrand($user->id);
+        $brands = $api_validation->getUserBrand($user_id);
         
         if($brands->count() == 0){
             throw new Exception('User Brand Not Found.');

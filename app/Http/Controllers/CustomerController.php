@@ -22,7 +22,7 @@ class CustomerController extends Controller
         try{
             // Validate request parameters and user
             $api_validation = new ApiValidation;
-            $user = $api_validation->validateAndGetUser($request);
+            $user = $api_validation->validateAndGetUser($request, true);
             
             //Get user region
             $region = $api_validation->getUserRegion($user->id);
@@ -30,6 +30,7 @@ class CustomerController extends Controller
                 throw new Exception('User Region Not Found.');
             }
             $region = $region->pluck('region_code')->unique();
+
             //Get customer details
             $customers = Customer::whereIn('Region__c', $region)
                                 ->where('address_Type__c', 'B')

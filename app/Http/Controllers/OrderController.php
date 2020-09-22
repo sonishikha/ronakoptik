@@ -16,8 +16,8 @@ class OrderController extends Controller
 {
     public function store(Request $request){
         try{
-            $creator_id = User::select('id')->where('email',$request->userName)->limit(1)->get();
-            $creator_id = $creator_id[0]->id;
+            $api_validation = new ApiValidation;
+            $user = $api_validation->validateAndGetUser($request);
             if(empty($request->saleOrderWrapper)){
                 throw New Exception('Please provide sale order data.');
             }
@@ -34,7 +34,7 @@ class OrderController extends Controller
                     }
                 }
                 $order = new Order;
-                $order->creator_id = $creator_id;
+                $order->creator_id = $user->id;
                 $order->bp_code = $sale_order['account'];
                 $order->tax_code = 'test';
                 $order->local_id = $sale_order['local_id'];
@@ -71,33 +71,28 @@ class OrderController extends Controller
     public function getInvoiceList(Request $request){
         try{
             $api_validation = new ApiValidation;
-            $user = $api_validation->validateAndGetUser($request);
+            $user = $api_validation->validateAndGetUser($request, true);
            
-            $order_data = Order::with('OrderItems')
+            $order_data = Order::with(array('OrderItems'=>function($query){
+                                    $query->select('tran_id','item_code','quantity','group_code','price','discount');
+                                }))
+                                ->select('id','bp_code as account_id','local_id','tax_code as taxCode','shipping_address as shipToParty','cash_discount as discount','comments as remakrs','ts as createdDate','status')
                                 ->where('creator_id', $user->id)
                                 ->orderBy('ts', 'desc')
                                 ->paginate(100, ['*'], 'page', $request->offSet);
             if($order_data->count() == 0){
                 throw New Exception('No Records Found.');
             }
-
-            $customer_ids = $order_data->pluck('bp_code');
+            
+            $customer_ids = $order_data->pluck('account_id');
             $customers = Customer::select('BP_Code__c','Customer_Name__c')
                                 ->whereIn('BP_Code__c',$customer_ids)->get();
             $customers = $customers->pluck('Customer_Name__c','BP_Code__c');
 
             $invoice_array = [];
             foreach($order_data as $key=>$order){
-                $invoice_array[$key]['invoice_id'] = $order->id;
-                $invoice_array[$key]['account_id'] = $order->bp_code;
-                $invoice_array[$key]['local_id'] = $order->local_id;
-                $invoice_array[$key]['taxCode'] = $order->tax_code;
-                $invoice_array[$key]['shipToParty'] = $order->shipping_address;
-                $invoice_array[$key]['discount'] = $order->cash_discount;
-                $invoice_array[$key]['remarks'] = $order->comments;
-                $invoice_array[$key]['createdDate'] = $order->ts;
-                $invoice_array[$key]['status'] = $order->status;
-                $invoice_array[$key]['customer_name'] = $customers[$order['bp_code']];
+                $order_data[$key]->invoice_id = $order->id;
+                $order_data[$key]->customer_name = $customers[$order->account_id];
                 $order_items = [];
                 $item_ids = $order->OrderItems->pluck('item_code');
                 $products = Product::select('Item_Code__c','Item_Name__c', 'Brand__c', 'Collection__c', 'Product__c')->whereIn('Item_Code__c',$item_ids)->get()->keyBy('Item_Code__c');
@@ -115,9 +110,9 @@ class OrderController extends Controller
                                 'Discount' => $item->discount
                             );
                 }
-                $invoice_array[$key]['saleOrdeLineItems'] = $order_items;
+                $order_data[$key]->saleOrdeLineItems = $order_items;
             }
-            return json_encode(array('success' => 1, 'data'=>$invoice_array));  
+            return ['success'=>1] + $order_data->toArray();
         }catch(Exception $e){
             return json_encode(['success'=>0, "message"=>$e->getMessage()]);
         }      
