@@ -52,7 +52,7 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
     
-    public function region(){
+    public function group_code(){
         return $this->hasOne('App\Models\UserRegion', 'user_id');
     }
 
@@ -63,5 +63,14 @@ class User extends Authenticatable implements JWTSubject
     public function brand(){
         return $this->hasMany('App\Models\UserBrandMap', 'user_id');
     }
+
+
+    // public function __destruct(){
+    //     //\DB::purge($this->connection);
+    //     \Log::info('Mysql Disconnection:',['connection_name'=>$this->connection,
+    //         'db_name'=>\DB::connection($this->connection)->getDatabaseName(),
+    //         'purge_value'=>\DB::purge($this->connection)]
+    //     );
+    // }
 
 }

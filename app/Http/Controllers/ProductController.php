@@ -74,7 +74,7 @@ class ProductController extends Controller
             $api_validation = new ApiValidation;
             $user = $api_validation->validateAndGetUser($request);
             $brandcode = $this->getUserBrands($user->id);
-           
+            
             $data['data'] = array('WAREHOUSELIST'=>[], 'WAREHOUSEBRANDLIST'=>[], 'BRANDLIST'=>[], 'collectionList'=>[], 'filGenderList'=>[], 'filmrpList'=>[]);
             //Get user warehouse
             $warehouses = $api_validation->getUserWarehouse($user->id);
@@ -98,7 +98,7 @@ class ProductController extends Controller
             $products = Product::select('Collection__c', 'Brand__c', 'Category__c', 'Item_Code__c')
                                 ->whereIn('Item_Group_Code__c', $brandcode)
                                 ->get()->toArray();
-            
+                                
             if(!empty($products)){
                 foreach($products as $product){
                     if($product['Brand__c'] != null && !in_array($product['Brand__c'], $data['data']['WAREHOUSEBRANDLIST'])){
@@ -129,54 +129,65 @@ class ProductController extends Controller
             $user = $api_validation->validateAndGetUser($request);
             $brandcode = $this->getUserBrands($user->id);
             
-            $products = Product::join('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
-                                ->whereIn('Item_Group_Code__c', $brandcode)
+            $products = Product::select('MRP','WHS Price','Tips_Color__c','Temple_Material__c','Temple_Color__c','Size__c','Shape__c','Front_Color__c','Frame_Structure__c','Frame_Material__c','Len_Material_c')
+                                ->join('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
+                                ->whereIn('Vw_ItemMaster.Item_Group_Code__c', $brandcode)
                                 ->get()->toArray();
-            print_r($products);
-            exit;
+            
             if(empty($products)){
                 throw new Exception('Products Not Found.');
             }
             
             $data['data'] = array('ws_price'=>[], 'tip_color'=>[], 'temple_material'=>[], 'temple_color'=>[],
-                                'size_list'=>[], 'shape_list'=>[], 'front_color'=>[], 'frame_structure'=>[], 
+                                'filSizeList'=>[], 'filSizeList1'=>[], 'filSizeList2'=>[], 'shape_list'=>[], 'front_color'=>[], 'frame_structure'=>[], 
                                 'frame_material'=>[], 'lens_material'=>[]);
             foreach($products as $product){
-                if(!empty($product['WHS Price']) && !in_array($product['WHS Price'], $data['data']['ws_price'])){
+                if((!empty($product['WHS Price']) || $product['WHS Price']!= null) && !in_array($product['WHS Price'], $data['data']['ws_price'])){
                     $data['data']['ws_price'][] = $product['WHS Price'];
                 }
-                if(!empty($product['Tips_Color__c']) && !in_array(strtoupper($product['Tips_Color__c']), $data['data']['tip_color'])){
+                if(!empty($product['Tips_Color__c'] || $product['Tips_Color__c'] != null) && !in_array(strtoupper($product['Tips_Color__c']), $data['data']['tip_color'])){
                     $data['data']['tip_color'][] = strtoupper($product['Tips_Color__c']);
                 }
-                if(!empty($product['Temple_Material__c']) && !in_array(strtoupper($product['Temple_Material__c']), $data['data']['temple_material'])){
+                if(!empty($product['Temple_Material__c'] || $product['Temple_Material__c'] != null) && !in_array(strtoupper($product['Temple_Material__c']), $data['data']['temple_material'])){
                     $data['data']['temple_material'][] = strtoupper($product['Temple_Material__c']);
                 }
-                if(!empty($product['Temple_Color__c']) && !in_array(strtoupper($product['Temple_Color__c']), $data['data']['temple_color'])){
+                if(!empty($product['Temple_Color__c'] || $product['Temple_Color__c'] != null) && !in_array(strtoupper($product['Temple_Color__c']), $data['data']['temple_color'])){
                     $data['data']['temple_color'][] = strtoupper($product['Temple_Color__c']);
                 }
-                if(!empty($product['Size__c']) && !in_array(strtoupper($product['Size__c']), $data['data']['size_list'])){
+                if(!empty($product['Size__c'] || $product['Size__c']!= null)){
                     $sizes = preg_split('#[\s]+#',$product['Size__c']);
-                    $data['data']['filSizeList'][] = $sizes[0];
-                    $data['data']['filSizeList1'][] = $sizes[1];
-                    $data['data']['filSizeList2'][] = $sizes[2];
+                    if(count($sizes) == 3){
+                        if(!in_array($sizes[0], $data['data']['filSizeList'])){
+                            $data['data']['filSizeList'][] = $sizes[0];
+                        }
+                        if(!in_array($sizes[1], $data['data']['filSizeList1'])){
+                            $data['data']['filSizeList1'][] = $sizes[1];
+                        }
+                        if(!in_array($sizes[2], $data['data']['filSizeList2'])){
+                            $data['data']['filSizeList2'][] = $sizes[2];
+                        }
+                    }
                 }
-                if(!empty($product['Shape__c']) && !in_array(strtoupper($product['Shape__c']), $data['data']['shape_list'])){
+                if(!empty($product['Shape__c'] || $product['Shape__c']!=null) && !in_array(strtoupper($product['Shape__c']), $data['data']['shape_list'])){
                     $data['data']['shape_list'][] = strtoupper($product['Shape__c']);
                 }
-                if(!empty($product['Front_Color__c']) && !in_array(strtoupper($product['Front_Color__c']), $data['data']['front_color'])){
+                if(!empty($product['Front_Color__c'] || $product['Front_Color__c']!=null) && !in_array(strtoupper($product['Front_Color__c']), $data['data']['front_color'])){
                     $data['data']['front_color'][] = strtoupper($product['Front_Color__c']);
                 }
-                if(!empty($product['Frame_Structure__c']) && !in_array(strtoupper($product['Frame_Structure__c']), $data['data']['frame_structure'])){
+                if(!empty($product['Frame_Structure__c'] || $product['Frame_Structure__c']!=null) && !in_array(strtoupper($product['Frame_Structure__c']), $data['data']['frame_structure'])){
                     $data['data']['frame_structure'][] = strtoupper($product['Frame_Structure__c']);
                 }
-                if(!empty($product['Frame_Material__c']) && !in_array(strtoupper($product['Frame_Material__c']), $data['data']['frame_material'])){
+                if(!empty($product['Frame_Material__c'] || $product['Frame_Material__c']!=null) && !in_array(strtoupper($product['Frame_Material__c']), $data['data']['frame_material'])){
                     $data['data']['frame_material'][] = strtoupper($product['Frame_Material__c']);
                 }
-                if(!empty($product['Len_Material_c']) && !in_array(strtoupper($product['Len_Material_c']), $data['data']['lens_material'])){
+                if(!empty($product['Len_Material_c'] || $product['Len_Material_c']!=null) && !in_array(strtoupper($product['Len_Material_c']), $data['data']['lens_material'])){
                     $data['data']['lens_material'][] = strtoupper($product['Len_Material_c']);
                 }
+                if(!empty($product['MRP'] || $product['MRP']!=null)){
+                    $mrps[] = $product['MRP'];
+                }
             } 
-            $mrps = array_column($products, 'MRP');
+            
             if(!empty($mrps)){
                 $data['data']['filmrpList'][] = "".round(min($mrps))."";
                 $data['data']['filmrpList'][] = "".round(max($mrps))."";

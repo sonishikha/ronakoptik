@@ -46,9 +46,9 @@ class ApiValidation extends Model
         return User::where('email', '=', $email)->first();
     }
 
-    public function getUserRegion($user_id)
+    public function getUserCustomerRegionGroup($user_id)
     {
-        return User::find($user_id)->region;
+        return User::find($user_id)->group_code;
     }
 
     public function getUserBrand($user_id)

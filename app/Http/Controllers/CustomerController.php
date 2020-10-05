@@ -24,15 +24,15 @@ class CustomerController extends Controller
             $api_validation = new ApiValidation;
             $user = $api_validation->validateAndGetUser($request, true);
             
-            //Get user region
-            $region = $api_validation->getUserRegion($user->id);
-            if(!$region){
-                throw new Exception('User Region Not Found.');
+            //Get user region group
+            $group_code = $api_validation->getUserCustomerRegionGroup($user->id);
+            if(!$group_code){
+                throw new Exception('User\'s Region Group Not Found.');
             }
-            $region = $region->pluck('region_code')->unique();
+            $group_code = $group_code->pluck('group_code')->unique();
 
             //Get customer details
-            $customers = Customer::whereIn('Region__c', $region)
+            $customers = Customer::whereIn('Customer_Group_Code__c', $group_code)
                                 ->where('address_Type__c', 'B')
                                 ->paginate(200, ['*'], 'page', $request->offSet)->toArray();
             if(empty($customers['data'])){
