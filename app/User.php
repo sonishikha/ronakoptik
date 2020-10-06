@@ -53,7 +53,7 @@ class User extends Authenticatable implements JWTSubject
     }
     
     public function group_code(){
-        return $this->hasOne('App\Models\UserRegion', 'user_id');
+        return $this->hasMany('App\Models\UserRegion', 'user_id');
     }
 
     public function warehouse(){
