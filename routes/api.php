@@ -22,7 +22,7 @@ Route::post('register', 'JwtAuthController@register');
 Route::post('login', 'JwtAuthController@authenticate');
 Route::get('mysqluser', 'JwtAuthController@getuser');  
 
-Route::group(['middleware' => ['jwt.verify']], function() {
+Route::group(['middleware' => ['jwt.verify','api.log']], function() {
     Route::get('user', 'JwtAuthController@getAuthenticatedUser');
     Route::post('customers', 'CustomerController@index');
     Route::post('products', 'ProductController@index');
