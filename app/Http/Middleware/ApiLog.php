@@ -37,12 +37,23 @@ class ApiLog
     protected function log($request, $response)
     {
         
-        \Log::channel('api_log')->info('ApiLog done===========================');
-        \Log::channel('api_log')->info('Duration:  ' .number_format($this->end - $this->start, 3));
-        \Log::channel('api_log')->info('URL: ' . $request->fullUrl());
-        \Log::channel('api_log')->info('Method: ' . $request->getMethod());
-        \Log::channel('api_log')->info('IP Address: ' . $request->getClientIp());
-        \Log::channel('api_log')->info('Status Code: ' . $response->getStatusCode());
-        \Log::channel('api_log')->info('Response: ' . $response->content());
+        $log = "Api Log ===============
+        Duration: ".number_format($this->end - $this->start, 3)."\n
+        Url: ".$request->fullUrl()."\n
+        Method: ".$request->getMethod()."\n
+        IP Address: ".$request->getClientIp()."\n
+        Status Code: ".$response->getStatusCode()."\n
+        Request: ".json_encode($request->all())."\n
+        Response: ".$response->content();
+                
+        \Log::channel('api_log')->info($log);
+        // \Log::channel('api_log')->info('ApiLog ===========================').'\n';
+        // \Log::channel('api_log')->info('Duration:  ' .number_format($this->end - $this->start, 3)).'\n';
+        // \Log::channel('api_log')->info('URL: ' . $request->fullUrl()).'\n';
+        // \Log::channel('api_log')->info('Method: ' . $request->getMethod()).'\n';
+        // \Log::channel('api_log')->info('IP Address: ' . $request->getClientIp()).'\n';
+        // \Log::channel('api_log')->info('Status Code: ' . $response->getStatusCode()).'\n';
+        // \Log::channel('api_log')->info('Request: ' . json_encode($request->all())).'\n';
+        // \Log::channel('api_log')->info('Response:' . $response->content());
     }
 }
