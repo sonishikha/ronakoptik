@@ -36,12 +36,13 @@ class OrderController extends Controller
                 $order = new Order;
                 $order->creator_id = $user->id;
                 $order->bp_code = $sale_order['account'];
-                $order->tax_code = 'test';
+                $order->tax_code = $sale_order['TaxCode'];
                 $order->local_id = $sale_order['local_id'];
                 $order->billing_address = $billing_address;
                 $order->shipping_address = $shipping_address;
                 $order->cash_discount = $sale_order['Discount'];
                 $order->comments = (empty($sale_order['Remarks'])) ? 'No Comments' : $sale_order['Remarks'];
+                $order->ts_report = (!empty($sale_order['CreatedDate'])) ? strtotime($sale_order['CreatedDate']) : '';
                 $result = $order->save();
                 if($result){
                     if(empty($sale_order['saleOrdeLineItems'])){
