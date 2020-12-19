@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use App\User;
 use Exception;
+use JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 class ApiValidation extends Model
 {
@@ -43,6 +45,11 @@ class ApiValidation extends Model
 
     public function checkUserExistsByEmail($email)
     {
+        $authentcated_user = $this->getAuthenticatedUser();
+        $authenticated_email = $authentcated_user->getData()->user->email;
+        if($authenticated_email != $email){
+            throw New Exception('Invalid Email Id. Unauthenticated User.');
+        }
         return User::where('email', '=', $email)->first();
     }
 
@@ -60,4 +67,21 @@ class ApiValidation extends Model
     {
         return User::find($user_id)->warehouse;
     }
+
+    public function getAuthenticatedUser()
+    {
+        try {
+            if (! $user = JWTAuth::parseToken()->authenticate()) {
+                return response()->json(['user_not_found'], 404);
+            }
+        } catch (Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
+                return response()->json(['token_expired'], $e->getStatusCode());
+        } catch (Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
+                return response()->json(['token_invalid'], $e->getStatusCode());
+        } catch (Tymon\JWTAuth\Exceptions\JWTException $e) {
+                return response()->json(['token_absent'], $e->getStatusCode());
+        }
+        return response()->json(compact('user'));
+    }
+
 }
