@@ -37,14 +37,14 @@ class ApiLog
     protected function log($request, $response)
     {
         
-        $log = "Api Log ===============
+        $log = PHP_EOL."Api Log ===============
         Duration: ".number_format($this->end - $this->start, 3)."\n
         Url: ".$request->fullUrl()."\n
         Method: ".$request->getMethod()."\n
         IP Address: ".$request->getClientIp()."\n
         Status Code: ".$response->getStatusCode()."\n
         Request: ".json_encode($request->all())."\n
-        Response: ".$response->content();
+        Response: ".$response->content()."Api Log Ends ===========".PHP_EOL;
                 
         \Log::channel('api_log')->info($log);
         // \Log::channel('api_log')->info('ApiLog ===========================').'\n';
