@@ -33,7 +33,7 @@ class ProductController extends Controller
                                     return $query->whereIn('Brand__c', $brands);
                                 })
                                 ->when(!empty($collection), function($query) use ($collection){
-                                    return $query->whereIn('Collection_Name__c', $collection);
+                                    return $query->whereIn('Collection__c', $collection);
                                 })
                                 ->leftjoin('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
                                 ->paginate(200, ['*'], 'page', $request->offSet)
