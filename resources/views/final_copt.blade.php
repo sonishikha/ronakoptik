@@ -243,8 +243,6 @@ class ProductController extends Controller
 
     public function getRefillData(){
       $input_brands = array();
-      $data1 = array();
-      $input_collection = array();
       // $whnames  = array('main','Deepak' );
       // $data_final = DB::table('Vw_ItemMaster')->Join('Vw_WarehouseStockDetails', 'Item_Code__c', '=', 'ItemCode')
       //       ->select(['Item_Code__c as itemcode', 'Item_Name__c as item_name','Brand__c as item_brand','Product__c as product','Collection_Name__c as collection_name','WhsCode as whscode','OnHand as onhand'])
@@ -254,14 +252,14 @@ class ProductController extends Controller
       //       print_r($data_final);
       //       die();
       $data = DB::table('Vw_ItemMaster')->Join('Vw_WarehouseStockDetails', 'Item_Code__c', '=', 'ItemCode')
-            ->select([ DB::raw('MAX(Item_Code__c) AS itemcode'),'Item_Name__c as item_name',DB::raw('MAX(Brand__c) AS item_brand'),DB::raw('MAX(Collection_Name__c) AS collection_name'),DB::raw('MAX(WhsCode) AS whscode'),DB::raw('SUM(OnHand) AS onhand'),DB::raw('MAX(OnHand) AS maxi')])
-            ->where('Item_Name__c', '=', '12345')
+            ->select([ DB::raw('MIN(Item_Code__c) AS itemcode'),'Item_Name__c as item_name','Brand__c as item_brand','Collection_Name__c as collection_name','WhsCode as whscode',DB::raw('SUM(OnHand) AS onhand')])
+            // ->where('campaigns.status', '=', 1)
             // ->orderBy('users.updated_at', 'desc')
 
             ->groupBy('Item_Name__c')
-            // ->groupBy('Collection_Name__c')
-            // ->groupBy('Brand__c')
-            // ->groupBy('WhsCode')
+            ->groupBy('Collection_Name__c')
+            ->groupBy('Brand__c')
+            ->groupBy('WhsCode')
             ->paginate(15);
             // ->get();
             // echo '<pre>';
@@ -279,7 +277,6 @@ class ProductController extends Controller
                   ->select(['WhsCode as whscode'])
                   ->groupBy('WhsCode')
                   ->get();
-            $selectedwarehouse = array();
             //       echo '<pre>';
             // print_r($data);
             // die();
@@ -288,30 +285,80 @@ class ProductController extends Controller
                         'brands'=>$brands,
                         'collection'=>$collection,
                         'warehouse'=>$warehouse,
-                        'input_brands'=>$input_brands,
-                        'input_collection'=>$input_collection,
-                        'selectedwarehouse'=>$selectedwarehouse
+                        'input_brands'=>$input_brands
                       ]);
     }
 
     public function category_filter(Request $request)
     {
+      $_GET['page'] = 0;
+      $input_brands1 = Array();
+      $input_collections1 = Array();
+      $input_brands1 = $request->input('brands');
+      // $input_collections1 = $request->input('collections');
+      $input_collections1= '';
+      // echo $input_brands;
+      // echo $input_collections;
+      // $input_brands = array_merge($input_brands1,$input_collections1);
+      // print_r($brand);
+      // die();
+      $input_brands = $_GET['brands'];
+      // $page = $_GET['page'];
+      // if($_GET['page'] > 1){
+      //   $input_brands = $_GET['brands'];
+      // }
 
-      $selectedbrands = $input_brands = implode(",",$_GET['brands']);
-      $selectedwarehouse =  $input_warehouse = implode(",",$_GET['warehouse']);
-      $selectedcollection = $input_collection = implode(",",$_GET['collections']);
+
+      if($input_brands){
+        $brand = $input_brands;
+        // $collection = $input_collections;
+        $data1 = DB::table('Vw_ItemMaster')->Join('Vw_WarehouseStockDetails', 'Item_Code__c', '=', 'ItemCode')
+              ->select(['Item_Code__c as itemcode', 'Item_Name__c as item_name','Brand__c as item_brand','Product__c as product','Collection_Name__c as collection_name','WhsCode as whscode','OnHand as onhand'])
+              ->where(function($query) use($brand){
+                for($i=0;$i<count($brand);$i++){
+                  $query->orwhere('Brand__c','like','%'.$brand[$i].'%');
+                  $query->orwhere('Collection_Name__c','like','%'.$brand[$i].'%');
+                }
+                // for($i=0;$i<count($collection);$i++){
+                //   $query->orwhere('Collection_Name__c','like','%'.$collection[$i].'%');
+                // }
+              })
+              // ->orwhere(function($query) use($collection){
+              //   for($i=0;$i<count($collection);$i++){
+              //     $query->orwhere('Collection_Name__c','like','%'.$collection[$i].'%');
+              //   }
+              // })
+              ->paginate(15)->appends('brands',request('brands'));
 
 
-      $data1 = DB::table('Vw_ItemMaster')->Join('Vw_WarehouseStockDetails', 'Item_Code__c', '=', 'ItemCode')
-            ->select([ DB::raw('MAX(Item_Code__c) AS itemcode'),'Item_Name__c as item_name',DB::raw('MAX(Brand__c) AS item_brand'),DB::raw('MAX(Collection_Name__c) AS collection_name'),DB::raw('MAX(WhsCode) AS whscode'),DB::raw('SUM(OnHand) AS onhand'),DB::raw('MAX(OnHand) AS maxi')])
-            ->whereIn('Brand__c',explode(",",$input_brands))
-            ->whereIn('Collection_Name__c',explode(",",$input_collection))
-            ->whereIn('WhsCode',explode(",",$input_warehouse))
-            ->groupBy('Item_Name__c')
-            ->paginate(10)->withQueryString();
+      } else {
+        $data1 = new \stdClass();
+      }
 
-
-
+      // echo '<pre>';
+      // print_r($data1);
+      // die();
+      // if($input_collections){
+      //   $collection = $input_collections;
+      //   $data2 = DB::table('Vw_ItemMaster')->Join('Vw_WarehouseStockDetails', 'Item_Code__c', '=', 'ItemCode')
+      //         ->select(['Item_Code__c as itemcode', 'Item_Name__c as item_name','Brand__c as item_brand','Product__c as product','Collection_Name__c as collection_name','WhsCode as whscode','OnHand as onhand'])
+      //         ->where(function($query) use($collection){
+      //           for($i=0;$i<count($collection);$i++){
+      //             $query->orwhere('Collection_Name__c','like','%'.$collection[$i].'%');
+      //           }
+      //         })
+      //         ->paginate(15);
+      // } else {
+      //   $data2 = new \stdClass();
+      // }
+      // print_r($data1);
+      // print_r($data2);
+      // die();
+      // $data = new \stdClass();
+       // $data[] = (object)array_merge((array)$data1,(array)$data2);
+      // echo '<pre>';
+      // print_r($data);
+      // die();
       $brands= DB::table('Vw_ItemMaster')->Join('Vw_WarehouseStockDetails', 'Item_Code__c', '=', 'ItemCode')
             ->select(['Brand__c as item_brand'])
             ->groupBy('Brand__c')
@@ -324,17 +371,12 @@ class ProductController extends Controller
             ->select(['WhsCode as whscode'])
             ->groupBy('WhsCode')
             ->get();
-            $input_brands = explode(",",$input_brands);
-            $input_collection = explode(",",$input_collection);
-            $selectedwarehouse = explode(",",$selectedwarehouse);
       return view('new',
         ['data'=>$data1,
         'brands'=>$brands,
         'collection'=>$collection,
         'warehouse'=>$warehouse,
-        'input_brands'=>$input_brands,
-        'input_collection'=>$input_collection,
-        'selectedwarehouse'=>$selectedwarehouse
+        'input_brands'=>$input_brands
         ]
       );
 
@@ -351,7 +393,6 @@ class ProductController extends Controller
         $RoStockReconcile->item_name = $request->input('item_name');
         $RoStockReconcile->stock_in_sap = $request->input('stock_in_system');
         $RoStockReconcile->actual_stock = $request->input('value');
-        $RoStockReconcile->actual_warehouse = $request->input('actual_warehouse');
         $RoStockReconcile->created_by = '1';
         $RoStockReconcile->updated_at = $date;
         $RoStockReconcile->updated_by = '1';
@@ -365,7 +406,6 @@ class ProductController extends Controller
         );
       } else {
         RoStockReconcile::where('item_name','=',$request->input('item_name'))
-        // RoStockReconcile::where('actual_warehouse','=',$request->input('actual_warehouse'))
         ->update([
           'actual_stock' => $request->input('value'),
           'updated_at' => $date
@@ -386,9 +426,7 @@ public function search(Request $request)
   $output="";
   $products = DB::table('Vw_ItemMaster')->Join('Vw_WarehouseStockDetails', 'Item_Code__c', '=', 'ItemCode')
         ->select(['Item_Code__c as itemcode', 'Item_Name__c as item_name','Brand__c as item_brand','Product__c as product','Collection_Name__c as collection_name','WhsCode as whscode','OnHand as onhand'])
-        ->where('Item_Name__c','LIKE','%'.$request->search."%")->paginate(50);
-
-
+        ->where('Item_Name__c','LIKE','%'.$request->search."%")->paginate(15);
     if($products){
       foreach ($products as $key => $product) {
         $p_brand ="'".$product->item_brand."'";
@@ -400,17 +438,10 @@ public function search(Request $request)
         '<td>'.$product->item_brand.'</td>'.
         '<td>'.$product->collection_name.'</td>'.
         '<td>'.$product->item_name.'</td>'.
+        '<td>'.$product->whscode.'</td>'.
         '<td>'.$product->onhand.'</td>'.
         '<td><input type="text" name="actual_value" id="actual_value'.$product->itemcode.'" class="form-control" onblur="add_record(this.value,'.$p_brand.','.$p_c_name.','.$p_i_name.','.$p_onhand.' )"></td>'.
-        '<td>'.$product->whscode.'</td>'.
         '</tr>';
-
-        $output.='<br>'.
-        '<div class="row">
-          <div class="col-md-12">
-          <div class="pagination"></div>
-          </div>
-        </div>';
       }
     return Response($output);
    }
@@ -419,12 +450,10 @@ public function search(Request $request)
 
 public static function main_product_count($whscode,$item_name){
   $data = DB::table('Vw_ItemMaster')->Join('Vw_WarehouseStockDetails', 'Item_Code__c', '=', 'ItemCode')
-        ->select([DB::raw('SUM(OnHand) AS truevalue')],'WhsCode as actual_whscode')
+        ->select([DB::raw('SUM(OnHand) AS truevalue')])
         ->where('WhsCode',$whscode)
         ->where('Item_Name__c',$item_name)
         ->first();
-        // print_r($data);
-        // die();
 
   return $data;
 
