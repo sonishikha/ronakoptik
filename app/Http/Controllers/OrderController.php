@@ -118,4 +118,73 @@ class OrderController extends Controller
             return json_encode(['success'=>0, "message"=>$e->getMessage()]);
         }      
     }
+
+    public function edit(Request $request){
+        try{
+            $api_validation = new ApiValidation;
+            $user = $api_validation->validateAndGetUser($request);
+            if(empty($request->saleOrderWrapper)){
+                throw New Exception('Please provide order data.');
+            }
+            
+            $sale_order = $request->saleOrderWrapper;
+            $invoice_id = isset($sale_order['invoice_id']) ? $sale_order['invoice_id'] : '';
+            if(empty($invoice_id)){
+                throw New Exception('Please provide Invoice Id.');
+            }
+            $order = Order::select('id')->where('id',$invoice_id)->first();
+            if(empty($order) && $order->count() == 0){
+                throw New Exception('Order not found.');
+            }
+            
+            $customer_address = Customer::select('BP_Code__c','Address_Type__c','Address_Name__c')->where('BP_Code__c',$sale_order['account'])->get();
+            $billing_address = $shipping_address = '';
+            foreach($customer_address as $customer){
+                if($customer->Address_Type__c == 'B'){
+                    $billing_address = $customer->Address_Name__c;
+                }
+                if($customer->Address_Type__c == 'S'){
+                    $shipping_address = $customer->Address_Name__c;
+                }
+            }
+            $order->creator_id = $user->id;
+            $order->bp_code = $sale_order['account'];
+            $order->tax_code = (!empty($sale_order['TaxCode'])) ? $sale_order['TaxCode'] : 0;
+            $order->local_id = $sale_order['local_id'];
+            $order->billing_address = $billing_address;
+            $order->shipping_address = $shipping_address;
+            $order->cash_discount = $sale_order['Discount'];
+            $order->comments = (empty($sale_order['Remarks'])) ? 'No Comments' : $sale_order['Remarks'];
+            $order->ts_report = (!empty($sale_order['CreatedDate'])) ? strtotime($sale_order['CreatedDate']) : 0;
+            $result = $order->save();
+            if($result){
+                if(empty($sale_order['saleOrdeLineItems'])){
+                    throw New Exception('Sale order items not available.');
+                }
+                foreach($sale_order['saleOrdeLineItems'] as $item){
+                    $product = Product::select('Item_Group_Code__c')->where('Item_Code__c',$item['ProductId'])->first();
+                    if(!empty($product)){ 
+                        $order_item = OrderItems::select('id')
+                                        ->where('tran_id', $invoice_id)
+                                        ->where('item_code',$item['ProductId'])->first();
+                        if(empty($order_item)){
+                            $order_item = new OrderItems;
+                        }
+                        $order_item->tran_id = $order->id;
+                        $order_item->group_code = $product->Item_Group_Code__c;
+                        $order_item->item_code = $item['ProductId'];
+                        $order_item->quantity = $item['Quantity'];
+                        $order_item->price = $item['Price'];
+                        $order_item->discount = $item['Discount'];
+                        $order_item->save();
+                    }
+                }
+                return json_encode(['success'=>1]);
+            }else{
+                throw New Exception('Cannot create order. Please try again.');
+            }
+        }catch(Exception $e){
+            return json_encode(['success'=>0, "message"=>$e->getMessage()]);
+        }
+    }
 }
