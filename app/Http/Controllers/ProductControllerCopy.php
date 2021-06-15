@@ -133,7 +133,7 @@ class ProductController extends Controller
             $user = $api_validation->validateAndGetUser($request);
             $brandcode = $this->getUserBrands($user->id);
 
-            $products = Product::select('MRP','WHS Price','Tips_Color__c','Temple_Material__c','Temple_Color__c','Size__c','Shape__c','Front_Color__c','Logo_Color__c','Frame_Structure__c','Frame_Material__c','Len_Material_c')
+            $products = Product::select('MRP','WHS Price','Tips_Color__c','Temple_Material__c','Temple_Color__c','Size__c','Shape__c','Front_Color__c','Frame_Structure__c','Frame_Material__c','Len_Material_c')
                                 ->join('VW_Item_PriceList','Vw_ItemMaster.Item_Code__c','=','VW_Item_PriceList.ItemCode')
                                 ->whereIn('Vw_ItemMaster.Item_Group_Code__c', $brandcode)
                                 ->get()->toArray();
@@ -144,7 +144,7 @@ class ProductController extends Controller
 
             $data['data'] = array('ws_price'=>[], 'tip_color'=>[], 'temple_material'=>[], 'temple_color'=>[],
                                 'filSizeList'=>[], 'filSizeList1'=>[], 'filSizeList2'=>[], 'shape_list'=>[], 'front_color'=>[], 'frame_structure'=>[],
-                                'frame_material'=>[], 'lens_material'=>[], 'logo_color'=>[]);
+                                'frame_material'=>[], 'lens_material'=>[]);
             foreach($products as $product){
                 if((!empty($product['WHS Price']) || $product['WHS Price']!= null) && !in_array($product['WHS Price'], $data['data']['ws_price'])){
                     $data['data']['ws_price'][] = $product['WHS Price'];
@@ -189,9 +189,6 @@ class ProductController extends Controller
                 }
                 if(!empty($product['MRP'] || $product['MRP']!=null)){
                     $mrps[] = $product['MRP'];
-                }
-                if(!empty($product['Logo_Color__c'] || $product['Logo_Color__c']!=null) && !in_array(strtoupper($product['Logo_Color__c']), $data['data']['logo_color'])){
-                    $data['data']['logo_color'][] = strtoupper($product['Logo_Color__c']);
                 }
             }
 

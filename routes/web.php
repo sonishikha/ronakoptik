@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProductController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,5 +15,16 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    echo phpinfo();
+    //echo phpinfo();
+    echo "New Page";
 });
+
+Route::view('refill','new');
+
+Route::get("Refill_page",[ProductController::class,'getRefillData']);
+
+Route::post("postinsert",[ProductController::class,'ajaxRequestPost']);
+
+Route::get('/search',[ProductController::class,'search']);
+
+Route::any('/category_filter',[ProductController::class,'category_filter']);
