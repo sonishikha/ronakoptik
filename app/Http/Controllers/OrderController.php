@@ -59,11 +59,11 @@ class OrderController extends Controller
                         $order_item->discount = $item['Discount'];
                         $order_item->save();
                     }
-                    return json_encode(['success'=>1]);
                 }else{
                     throw New Exception('Cannot create order. Please try again.');
                 }
             }
+            return json_encode(['success'=>1]);
         }catch(Exception $e){
             return json_encode(['success'=>0, "message"=>$e->getMessage()]);
         }
